@@ -7,8 +7,9 @@ This package provides a script, `classroom-tool` which is designed to work with 
 Install the package using:
 
 ```console
-$ pip install 
+$ pip install git+https://github.com/dham/classroom-tool
+```
 
-## OAuth token
+## GitHub personal access token
 
-In order
+`classroom-tool` will need to access GitHub in order to work, and to do so it will need to be able to authenticate to GitHub. You will therefore need to set up a GitHub [personal access token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) with `repo` permissions. Store the PAT in the `GITHUB_OAUTH` environment variable so that `classroom-tool` can access it.
