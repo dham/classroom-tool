@@ -6,11 +6,11 @@ from argparse import ArgumentParser
 import subprocess
 import sys
 import datetime
-from configparser import ConfigParser, Error
+from configparser import ConfigParser
 import logging
 
 
-class ConfigError(Error):
+class ConfigError(Exception):
     pass
 
 
@@ -41,11 +41,29 @@ if not isinstance(numeric_level, int):
     raise ValueError('Invalid log level: %s' % loglevel)
 logging.basicConfig(level=numeric_level, format='%(asctime)s %(message)s')
 
-config = ConfigParser()
-config.read(args.config_file)
+configparser = ConfigParser()
+configparser.read(args.config_file)
 
+if not configparser.sections():
+    raise ConfigError(f"Missing or empty config file: {args.config_file}")
+
+
+def config(section, key):
+    try:
+        sec = configparser[section]
+    except KeyError:
+        raise ConfigError(f"Config file is missing a {section} section.")
+
+    try:
+        return sec[key]
+    except KeyError:
+        raise ConfigError(f"Config file is missing a {section}->{key} entry.")
+
+if "GITHUB_OAUTH" not in os.environ:
+    ConfigError("The environment variable GITHUB_OAUTH"
+                " must be set to a suitable GitHub personal access token.")
 gh = github.Github(os.environ["GITHUB_OAUTH"])
-org = gh.get_organization(config["github"]["organization"])
+org = gh.get_organization(config("github", "organization"))
 repo = git.Repo(".")
 
 
@@ -67,7 +85,7 @@ def get_remote(name, url):
 if args.fetch:
     count = 0
 
-    reponame = config["github"]["basename"]
+    reponame = config("github", "basename")
     name_offset = len(reponame) + 1
 
     for r in org.get_repos():
@@ -80,17 +98,26 @@ if args.fetch:
     logging.info(f"{count} repos found.")
 
 
- if args.update_branches:
-    if not config["github"]["marking-repo"]:
-        raise ConfigError("Configuration paramater github->marking-repo absent.")
+if args.update_branches:
+    if not config("github", "marking-repo"):
+        raise ConfigError("Configuration parameter github->marking-repo absent.")
     logging.info("Finding marking repository"
-                 f" {config['github']['organization']}"
-                 f"/{}")
+                 f" {config('github', 'organization')}"
+                 f"/{config('github', 'marking-repo')}")
     try:
-        remote = repo.remote(config["github"]["marking-repo"])
+        remote = repo.remote(config("github", "marking-repo"))
     except ValueError:
+        logging.info("Doesn't exist, creating.")
         try:
-            marking_repo = org.get_repo("midterm-marking")
+            marking_repo = org.get_repo(config("github", "marking-repo"))
+        except github.GithubException:
+            marking_repo = org.create_repo(config("github", "marking-repo"),
+                                           private=True)
+        remote = repo.create_remote(config("github", "marking-repo"),
+                                    marking_repo.ssh_url)
+    remote.fetch()
+
+            
 #     marking_repos = {pull.title for pull in marking_repo.get_pulls()}
 
 #     for r in org.get_repos():
@@ -148,10 +175,10 @@ if args.fetch:
 #         gituser = r.path.split("/")[2]
 #         branch = r.path.split("/")[3]
 #         try:
-#             cloned[gituser][branch] = r
+#             cloned[gituser, branch] = r
 #         except KeyError:
 #             cloned[gituser] = {}
-#             cloned[gituser][branch] = r
+#             cloned[gituser, branch] = r
 
 #     for gituser, repos in cloned.items():
 #         this = cloned[gituser]
@@ -208,7 +235,7 @@ if args.fetch:
 
 #     for r in repo.refs:
 #         if r.name.startswith("origin") and r.name.endswith("main"):
-#             uname = r.name.split("/")[1][:-5]
+#             uname = r.name.split("/")[1, :-5]
 #             if f"{uname}-mark" in existing_pulls:
 #                 logging.info(f"skipping {uname}")
 #                 continue
