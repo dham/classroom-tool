@@ -8,6 +8,7 @@ import sys
 import datetime
 from configparser import ConfigParser
 import logging
+import pandas as pd
 
 
 class ConfigError(Exception):
@@ -24,8 +25,8 @@ parser.add_argument("--log-level", type=str, action="store",
                     help="Level of logging (defaults to INFO).")
 parser.add_argument("--fetch", action="store_true",
                     help="Fetch all the student repositories.")
-parser.add_argument("--update-branches", action="store_true",
-                    help="Update brances in the marking repository.")
+parser.add_argument("--create-branches", action="store_true",
+                    help="Create student branches in the marking repository.")
 parser.add_argument(
     "--impose-deadline", action="store_true",
     help="Create a branch pointing at the latest legal submission.")
@@ -36,10 +37,10 @@ parser.add_argument("--pull-requests", action="store_true",
 
 args = parser.parse_args()
 
-numeric_level = getattr(logging, args.log_level.upper(), None)
-if not isinstance(numeric_level, int):
-    raise ValueError('Invalid log level: %s' % loglevel)
-logging.basicConfig(level=numeric_level, format='%(asctime)s %(message)s')
+log_level = getattr(logging, args.log_level.upper(), None)
+if not isinstance(log_level, int):
+    raise ValueError('Invalid log level: %s' % args.log_level)
+logging.basicConfig(level=args.log_level, format='%(asctime)s %(message)s')
 
 configparser = ConfigParser()
 configparser.read(args.config_file)
@@ -63,7 +64,9 @@ if "GITHUB_OAUTH" not in os.environ:
     ConfigError("The environment variable GITHUB_OAUTH"
                 " must be set to a suitable GitHub personal access token.")
 gh = github.Github(os.environ["GITHUB_OAUTH"])
-org = gh.get_organization(config("github", "organization"))
+orgname = config("github", "organization")
+logging.info(f"Connecting to GitHub Organization {orgname}")
+org = gh.get_organization(orgname)
 repo = git.Repo(".")
 
 
@@ -82,6 +85,27 @@ def get_remote(name, url):
     return remote
 
 
+class IdentityMap:
+    def __getitem__(self, key):
+        return key
+
+
+def roster_map():
+    """Return a map from GitHub to institution names.
+
+    Return a dictionary mapping GitHub names back to institution names using the
+    GitHub class roster specified in the students->roster configuration variable.
+    """
+    try:
+        rosterfile = pd.read_csv(config("students", "roster"))
+    except ConfigError:
+        return IdentityMap()
+
+    return {gh: i for gh, i in zip(rosterfile["github_username"],
+                                   rosterfile["identifier"])
+            if gh}
+
+
 if args.fetch:
     count = 0
 
@@ -98,26 +122,48 @@ if args.fetch:
     logging.info(f"{count} repos found.")
 
 
-if args.update_branches:
-    if not config("github", "marking-repo"):
-        raise ConfigError("Configuration parameter github->marking-repo absent.")
-    logging.info("Finding marking repository"
-                 f" {config('github', 'organization')}"
-                 f"/{config('github', 'marking-repo')}")
-    try:
-        remote = repo.remote(config("github", "marking-repo"))
-    except ValueError:
-        logging.info("Doesn't exist, creating.")
-        try:
-            marking_repo = org.get_repo(config("github", "marking-repo"))
-        except github.GithubException:
-            marking_repo = org.create_repo(config("github", "marking-repo"),
-                                           private=True)
-        remote = repo.create_remote(config("github", "marking-repo"),
-                                    marking_repo.ssh_url)
-    remote.fetch()
+if args.create_branches:
+    ident = roster_map()
 
-            
+    remote_prefix = "refs/remotes/std_"
+
+    for ref in repo.refs:
+        if ref.path.startswith(remote_prefix):
+            gituser, branch = \
+                ref.path[len(remote_prefix):].split("/")
+            try:
+                identifier = ident[gituser]
+            except KeyError:
+                logging.warning(f"No identifier found for {gituser} in roster.")
+                continue
+            if branch in ("master", "main", "feedback"):
+                logging.info(f"Creating branch {identifier}-{branch}")
+                repo.create_head(f"{identifier}-{branch}", ref.commit.hexsha)
+            # Create the branch to mark.
+            if branch in ("master", "main"):
+                logging.info(f"Creating branch {identifier}-mark")
+                repo.create_head(f"{identifier}-mark", ref.commit.hexsha)
+
+    # if not config("github", "marking-repo"):
+    #     raise ConfigError("Configuration parameter github->marking-repo absent.")
+    # logging.info("Finding marking repository"
+    #              f" {config('github', 'organization')}"
+    #              f"/{config('github', 'marking-repo')}")
+    # try:
+    #     remote = repo.remote(config("github", "marking-repo"))
+    # except ValueError:
+    #     logging.info("Doesn't exist, creating.")
+    #     try:
+    #         marking_repo = org.get_repo(config("github", "marking-repo"))
+    #     except github.GithubException:
+    #         marking_repo = org.create_repo(config("github", "marking-repo"),
+    #                                        private=True)
+    #     remote = repo.create_remote(config("github", "marking-repo"),
+    #                                 marking_repo.ssh_url)
+    # remote.fetch()
+
+
+    
 #     marking_repos = {pull.title for pull in marking_repo.get_pulls()}
 
 #     for r in org.get_repos():
