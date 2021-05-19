@@ -26,10 +26,13 @@ parser.add_argument("--log-level", type=str, action="store",
 parser.add_argument("--fetch", action="store_true",
                     help="Fetch all the student repositories.")
 parser.add_argument("--create-branches", action="store_true",
-                    help="Create student branches in the marking repository.")
+                    help="Create student main and feedback "
+                    "branches in the marking repository.")
 parser.add_argument(
     "--impose-deadline", action="store_true",
     help="Create a branch pointing at the latest legal submission.")
+parser.add_argument("--push", action="store_true",
+                    help="Push branches to the marking repo")
 parser.add_argument("--check-submissions", action="store_true",
                     help="Check datestamps on midterm submissions.")
 parser.add_argument("--pull-requests", action="store_true",
@@ -139,31 +142,50 @@ if args.create_branches:
             if branch in ("master", "main", "feedback"):
                 logging.info(f"Creating branch {identifier}-{branch}")
                 repo.create_head(f"{identifier}-{branch}", ref.commit.hexsha)
-            # Create the branch to mark.
-            if branch in ("master", "main"):
-                logging.info(f"Creating branch {identifier}-mark")
-                repo.create_head(f"{identifier}-mark", ref.commit.hexsha)
-
-    # if not config("github", "marking-repo"):
-    #     raise ConfigError("Configuration parameter github->marking-repo absent.")
-    # logging.info("Finding marking repository"
-    #              f" {config('github', 'organization')}"
-    #              f"/{config('github', 'marking-repo')}")
-    # try:
-    #     remote = repo.remote(config("github", "marking-repo"))
-    # except ValueError:
-    #     logging.info("Doesn't exist, creating.")
-    #     try:
-    #         marking_repo = org.get_repo(config("github", "marking-repo"))
-    #     except github.GithubException:
-    #         marking_repo = org.create_repo(config("github", "marking-repo"),
-    #                                        private=True)
-    #     remote = repo.create_remote(config("github", "marking-repo"),
-    #                                 marking_repo.ssh_url)
-    # remote.fetch()
 
 
-    
+if args.impose_deadline:
+    for r in repo.refs:
+        try:
+            branchname = r.path.split("/")[3]
+        except IndexError:
+            continue
+        if "-main" not in branchname:
+            continue
+        username = "-".join(branchname.split("-")[:-1])
+        c = r.commit
+        while c.committed_datetime > cutoff:
+            c = c.parents[0]
+        logging.info(f"{username}: last commit {commit_time(r.commit)}"
+                     f" mark commit {commit_time(c)}")
+        try:
+            repo.create_head(username+"-mark", commit=c)
+        except OSError:
+            logging.info(f"Not moving {username}-mark.")
+
+
+if args.push:
+    logging.info("Finding marking repository"
+                 f" {config('github', 'organization')}"
+                 f"/{config('github', 'marking-repo')}")
+    try:
+        remote = repo.remote(config("github", "marking-repo"))
+    except ValueError:
+        logging.info("Doesn't exist, creating.")
+        try:
+            marking_repo = org.get_repo(config("github", "marking-repo"))
+        except github.GithubException:
+            marking_repo = org.create_repo(config("github", "marking-repo"),
+                                           private=True)
+        remote = repo.create_remote(config("github", "marking-repo"),
+                                    marking_repo.ssh_url)
+    for branch in repo.branches:
+        logging.info(f"Pushing {branch.name}")
+        remote.push(branch.name)
+
+
+
+
 #     marking_repos = {pull.title for pull in marking_repo.get_pulls()}
 
 #     for r in org.get_repos():
@@ -184,27 +206,6 @@ if args.create_branches:
 
 # cutoff = datetime.datetime(2021, 2, 26, 9, 42, tzinfo=datetime.timezone.utc)
 
-# if args.impose_deadline:
-#     # Note this is designed to be run from within the marking repo.
-#     for r in repo.refs:
-#         try:
-#             branchname = r.path.split("/")[3]
-#         except IndexError:
-#             continue
-#         if "-main" not in branchname:
-#             continue
-#         username = "-".join(branchname.split("-")[:-1])
-#         c = r.commit
-#         while c.committed_datetime > cutoff:
-#             c = c.parents[0]
-#         logging.info(f"{username}: last commit {commit_time(r.commit)}"
-#               f" mark commit {commit_time(c)}")
-#         try:
-#             repo.create_head(username+"-mark", commit=c)
-#         except OSError:
-#             logging.info(f"Not moving {username}-mark.")
-#         logging.info(f"Pushing {username}-mark")
-#         repo.remote().push(username+"-mark")
 
 # if args.check_midterm:
 #     import pandas as pd
@@ -285,7 +286,7 @@ if args.create_branches:
 #             if f"{uname}-mark" in existing_pulls:
 #                 logging.info(f"skipping {uname}")
 #                 continue
-            
+
 #             logging.info(uname)
 #             marking_repo.create_pull(title=uname,
 #                                          body="Midterm marking.",
