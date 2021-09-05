@@ -35,13 +35,13 @@ parser.add_argument("--create-branches", action="store_true",
 parser.add_argument(
     "--impose-deadline", action="store_true",
     help="Create a branch pointing at the latest legal submission.")
+parser.add_argument("--create-report", action="store_true",
+                    help="Produce a report of submissions and lateness.")
 parser.add_argument("--push", action="store_true",
                     help="Push branches to the marking repo")
 parser.add_argument("--force", action="store_true",
                     help="When pushing, force the push."
                     " Useful after anonymising the repo.")
-parser.add_argument("--create-report", action="store_true",
-                    help="Produce a report of submissions and lateness.")
 parser.add_argument("--pull-requests", action="store_true",
                     help="Create marking pull requests.")
 
@@ -71,14 +71,14 @@ def config(section, key):
         raise ConfigError(f"Config file is missing a {section}->{key} entry.")
 
 
-if "GITHUB_OAUTH" not in os.environ:
-    ConfigError("The environment variable GITHUB_OAUTH"
+if "GITHUB_PAT" not in os.environ:
+    ConfigError("The environment variable GITHUB_PAT"
                 " must be set to a suitable GitHub personal access token.")
 
 
 @cache
 def gh_org():
-    gh = github.Github(os.environ["GITHUB_OAUTH"])
+    gh = github.Github(os.environ["GITHUB_PAT"])
     orgname = config("github", "organization")
     logging.info(f"Connecting to GitHub Organization {orgname}")
     return gh.get_organization(orgname)
