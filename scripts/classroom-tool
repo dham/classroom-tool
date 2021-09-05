@@ -175,7 +175,8 @@ if args.create_branches:
             if branch in ("master", "main", "feedback"):
                 logging.info(f"Creating branch {identifier}-{branch}")
                 try:
-                    repo.create_head(f"{identifier}-{branch}", ref.commit.hexsha)
+                    repo.create_head(f"{identifier}-{branch}",
+                                     ref.commit.hexsha)
                 except:
                     logging.info(f"Branch exists. Updating")
                     repo.heads[f"{identifier}-{branch}"].set_commit(ref.commit)
