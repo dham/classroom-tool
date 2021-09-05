@@ -121,7 +121,7 @@ student number), this forms the first stage in anonymising the submissions.
 ### Imposing the deadline
 
 Passing `--impose-deadline` will create local branches with names of the form
-`--identifier-mark`. These branches will point to the last commit before the
+`identifier-mark`. These branches will point to the last commit before the
 deadline specified in the configuration file. In the current version of
 `classroom-tool`, extra time is not automatically accounted for at this stage:
 you will need to manually move the branch pointer in these cases. For example
