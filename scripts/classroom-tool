@@ -209,7 +209,7 @@ if args.impose_deadline:
         try:
             repo.create_head(identifier+"-mark", commit=c)
         except OSError:
-            logging.info(f"Not moving {username}-mark.")
+            logging.info(f"Not moving {identifier}-mark.")
 
 
 if args.push:

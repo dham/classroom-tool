@@ -17,12 +17,17 @@ students by creating PDFs of the annotated pull requests.
 Install the package using:
 
 ```console
-$ pip install git+https://github.com/dham/classroom-tool
+$ pip install classroom-tool
 ```
 
 ## GitHub personal access token
 
-`classroom-tool` will need to access GitHub in order to work, and to do so it will need to be able to authenticate to GitHub. You will therefore need to set up a GitHub [personal access token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) with `repo` permissions. Store the PAT in the `GITHUB_PAT` environment variable so that `classroom-tool` can access it.
+`classroom-tool` will need to access GitHub in order to work, and to do so it
+will need to be able to authenticate to GitHub. You will therefore need to set
+up a GitHub [personal access
+token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token)
+with `repo` permissions. Store the PAT in the `GITHUB_PAT` environment variable
+so that `classroom-tool` can access it.
 
 ## Setting up the GitHub assignment
 
@@ -54,7 +59,7 @@ deadline = 2021-05-26T12:00:00+01:00
 
 This section contains information about the students taking the exercise.
 
-`roster` is a `.csv` (comma-separated values) file with at least the follwing
+`roster` is a `.csv` (comma-separated values) file with at least the following
 columns. These are present in the roster you can download from GitHub classroom:
 
 `identifier`: The identifier of the student at your institution, such as a
@@ -104,7 +109,8 @@ classroom-tool --config-file CONFIG_FILE
 ```
 with `CONFIG_FILE` replaced by the name of the configuration file. By itself,
 this will do nothing. Actual processing is achieved by adding the options for
-one or more of the following, stages. A help message is available by passing `--help`.
+one or more of the following, stages. A help message is available by passing
+`--help`.
 
 ### Fetching repositories
 
@@ -153,7 +159,7 @@ technical or other issues.
 ### Pushing to the marking repository.
 
 Passing `--push` will push all of the local, `-main`, `-master`, `-feedback`,
-and `-mark` branches to the marking repository on `GitHub.
+and `-mark` branches to the marking repository on GitHub.
 
 ### Creating marking pull requests.
 
@@ -168,7 +174,8 @@ large classes.
 Remapping the repository names to university identity numbers is not enough to
 anonymise the submissions, because every commit has author information. 
 
-Fortunately, [git-filter-repo](https://github.com/newren/git-filter-repo) can fix this. The following code will anonymise all commits in the repository:
+Fortunately, [git-filter-repo](https://github.com/newren/git-filter-repo) can
+fix this. The following code will anonymise all commits in the repository:
 
 ```
 git-filter-repo --email-callback 'return b"anon@anon.eu"' --force --name-callback 'return b"Anonymous"'
