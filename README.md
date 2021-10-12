@@ -169,6 +169,17 @@ with `-feedback`. Creating pull requests is intentionally throttled to once per
 three seconds in order to avoid triggering GitHub rate limits when working with
 large classes.
 
+### Cutting down the GitHub spam
+
+When running a big course, one can easily be overwhelmed by notifications from
+all of the classroom repositories. It is possible to unwatch everything
+manually, but that's too much clicking. This can be overcome with:
+```
+classroom-tool --unwatch
+```
+This unsubscribes the logged-in user from all repositories in the configured
+classroom that match the configured basename.
+
 ## Anonymising the repository
 
 Remapping the repository names to university identity numbers is not enough to

@@ -44,6 +44,8 @@ parser.add_argument("--force", action="store_true",
                     " Useful after anonymising the repo.")
 parser.add_argument("--pull-requests", action="store_true",
                     help="Create marking pull requests.")
+parser.add_argument("--unwatch", action="store_true",
+                    help="Unwatch all repositories that match the basename")
 
 args = parser.parse_args()
 
@@ -82,6 +84,12 @@ def gh_org():
     orgname = config("github", "organization")
     logging.info(f"Connecting to GitHub Organization {orgname}")
     return gh.get_organization(orgname)
+
+
+@cache
+def gh_user():
+    gh = github.Github(os.environ["GITHUB_PAT"])
+    return gh.get_user()
 
 
 repo = git.Repo(".")
@@ -156,6 +164,13 @@ if args.fetch:
             remote.fetch()
     logging.info(f"{count} repos found.")
 
+if args.unwatch:
+    reponame = config("github", "basename")
+    user = gh_user()
+    for r in gh_org().get_repos():
+        if r.name.startswith(f"{reponame}-"):
+            logging.info(f"Removing {user.login} from subscriber list of {r.name}")
+            user.remove_from_subscriptions(r)
 
 if args.create_branches:
     ident = roster_map()
