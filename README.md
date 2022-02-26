@@ -88,6 +88,10 @@ pul requests will be created. This is in the same organization. The marking
 repository should be an initially empty, **private** repository. Its name
 should not start with `basename`.
 
+`delay`: The number of seconds to wait between creating pull requests. Set or
+increase this if you find you are hitting GitHub secondary rate limits when
+running with the `--pull-requests` option. Defaults to 10 seconds.
+
 ### assignment
 
 Information specific to this assignment.

@@ -264,6 +264,11 @@ if args.pull_requests:
     marking_repo = gh_org().get_repo(config("github", "marking-repo"))
     existing_pulls = {pull.head.ref for pull in marking_repo.get_pulls()}
 
+    try:
+        github_delay = int(config("github", "delay"))
+    except ConfigError:
+        github_delay = 10
+
     for branch in repo.branches:
         if not branch.name.endswith("-mark"):
             continue
@@ -279,7 +284,7 @@ if args.pull_requests:
                                  base=f"{uname}-feedback",
                                  head=f"{uname}-mark",
                                  draft=False)
-        time.sleep(3)
+        time.sleep(github_delay)
 
 
 if args.create_report:
