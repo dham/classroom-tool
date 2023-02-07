@@ -191,9 +191,9 @@ student in the marking repository. Files will be stored in a `feedback/`
 subdirectory with the name of each file being `<github_username>.pdf`.
 
 Taking these screenshots requires the use of a browser to render the pages and
-so [`selenium`](https://www.selenium.dev/) (`pip install selenium`) is used to
-automate the process of: navigating to the correct web page, waiting for it to
-load and printing to a PDF. At present only Google Chrome/Chromium (via
+so [`selenium`](https://www.selenium.dev/) is used to automate the process of:
+navigating to the correct web page, waiting for it to load and printing to a PDF.
+At present only Google Chrome/Chromium (via
 [`chromedriver`](https://chromedriver.chromium.org/home)) is supported.
 
 Each time `--save-feedback` is passed a fresh browser instance is created

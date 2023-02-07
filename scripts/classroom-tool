@@ -170,7 +170,7 @@ def login_to_github(browser):
     input("Once you have logged in please press Enter to continue:")
 
 
-def save_pull_request_as_pdf(browser, repo, github_username, pr_number):
+def save_pull_request_as_pdf(browser, repo, pr):
     """Open the 'Files changed' tab of a pull request and save the page as a PDF.
 
     Parameters
@@ -179,18 +179,16 @@ def save_pull_request_as_pdf(browser, repo, github_username, pr_number):
         The Chrome/Chromium instance.
     repo : github.Repository.Repository
         The marking repository where the feedback is stored.
-    github_username : str
-        The GitHub username of the student.
-    pr_number : int
-        Pull request identifier (used in the URL).
+    pr : github.PullRequest.PullRequest
+        The pull request to save.
     """
-    filename = f"feedback/{github_username}.pdf"
+    filename = f"feedback/{pr.title}.pdf"
     if os.path.exists(filename):
         logging.info(f"{filename} already exists, skipping")
         return
 
-    logging.info(f"Saving pull request for {github_username} to {filename}")
-    url = f"https://github.com/{repo.full_name}/pull/{pr_number}/files"
+    logging.info(f"Saving pull request #{pr.number} to {filename}")
+    url = f"https://github.com/{repo.full_name}/pull/{pr.number}/files"
     browser.get(url)
     time.sleep(5)  # wait for the page to fully load
     save_current_page_as_pdf(browser, filename)
@@ -421,11 +419,8 @@ if args.save_feedback:
     browser = launch_browser()
     login_to_github(browser)
 
-    roster = pd.read_csv(config("students", "roster"))
     marking_repo = gh_org().get_repo(config("github", "marking-repo"))
-    prs_by_github_username = {pr.title: pr for pr in marking_repo.get_pulls()}
-    for gh in roster["github_username"]:
-        pr = prs_by_github_username[gh]
-        save_pull_request_as_pdf(browser, marking_repo, gh, pr.number)
+    for pr in marking_repo.get_pulls():
+        save_pull_request_as_pdf(browser, marking_repo, pr)
 
     browser.quit()
