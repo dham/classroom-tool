@@ -188,7 +188,7 @@ classroom that match the configured basename.
 
 Passing `--save-feedback` will save a PDF of the "Files changed" tab for each
 student in the marking repository. Files will be stored in a `feedback/`
-subdirectory with the name of each file being `<github_username>.pdf`.
+subdirectory with the name of each file being `<PR title>.pdf`.
 
 Taking these screenshots requires the use of a browser to render the pages and
 so [`selenium`](https://www.selenium.dev/) is used to automate the process of:
