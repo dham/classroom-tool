@@ -113,6 +113,17 @@ def get_remote(name, url):
 class IdentityMap:
     def __getitem__(self, key):
         return key
+    
+def roster_frame():
+    """Return a Pandas dataframe containing the roster."""
+    roster_file_name = os.path.join(
+        os.path.dirname(args.config_file),
+        config("students", "roster")
+    )
+    return pd.read_csv(roster_file_name,
+                       dtype={"identifier": str,
+                              "github_username": str})
+
 
 
 def roster_map():
@@ -123,7 +134,7 @@ def roster_map():
     variable.
     """
     try:
-        rosterfile = pd.read_csv(config("students", "roster"))
+        rosterfile = roster_frame()
     except ConfigError:
         return IdentityMap()
 
@@ -288,7 +299,7 @@ if args.pull_requests:
 
 
 if args.create_report:
-    roster = pd.read_csv(config("students", "roster"))
+    roster = roster_frame()
     cutoff = datetime.datetime.fromisoformat(config("assignment", "deadline"))
 
     out = {s: roster[s] for s in roster}
