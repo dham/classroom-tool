@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import os
-import sys
 import github  # Install pygithub
 import git     # Install gitpython
 from argparse import ArgumentParser
@@ -50,8 +49,10 @@ parser.add_argument("--pull-requests", action="store_true",
                     help="Create marking pull requests.")
 parser.add_argument("--unwatch", action="store_true",
                     help="Unwatch all repositories that match the basename")
-parser.add_argument("--save-feedback", action="store_true",
-                    help="Save PDFs of the feedback left on the pull requests.")
+parser.add_argument(
+    "--save-feedback", action="store_true",
+    help="Save PDFs of the feedback left on the pull requests."
+)
 
 args = parser.parse_args()
 
@@ -119,7 +120,8 @@ def get_remote(name, url):
 class IdentityMap:
     def __getitem__(self, key):
         return key
-    
+
+
 def roster_frame():
     """Return a Pandas dataframe containing the roster."""
     roster_file_name = os.path.join(
@@ -129,7 +131,6 @@ def roster_frame():
     return pd.read_csv(roster_file_name,
                        dtype={"identifier": str,
                               "github_username": str})
-
 
 
 def roster_map():
@@ -168,7 +169,7 @@ def launch_browser():
     return webdriver.Chrome("chromedriver")
 
 
-def login_to_github(browser):
+def login_to_github(browser, repo):
     """Launch the GitHub login page and wait until the user has logged in.
 
     Parameters
@@ -177,12 +178,12 @@ def login_to_github(browser):
         The Chrome/Chromium instance.
     """
     logging.info("Loading GitHub login page")
-    browser.get('https://github.com/login')
+    browser.get(f"https://github.com/{repo.full_name}/pulls")
     input("Once you have logged in please press Enter to continue:")
 
 
 def save_pull_request_as_pdf(browser, repo, pr):
-    """Open the 'Files changed' tab of a pull request and save the page as a PDF.
+    """Save the 'Files changed' tab of a pull request as a PDF.
 
     Parameters
     ----------
@@ -215,8 +216,10 @@ def save_current_page_as_pdf(browser, filename):
     filename : str
         The name of the PDF file to write to.
     """
-    url = (browser.command_executor._url
-           + f"/session/{browser.session_id}/chromium/send_command_and_get_result")
+    url = (
+        browser.command_executor._url
+        + f"/session/{browser.session_id}/chromium/send_command_and_get_result"
+    )
     params = {
         "landscape": False,
         "displayHeaderFooter": False,
@@ -239,8 +242,10 @@ if args.fetch:
     name_offset = len(reponame) + 1
 
     for r in gh_org().get_repos():
-        if (r.name.startswith(reponame)
-            and not r.name.startswith('exam-practice')):
+        if (
+            r.name.startswith(reponame)
+            and not r.name.startswith('exam-practice')
+        ):
 
             count += 1
             uname = "std_" + r.name[name_offset:]
@@ -254,7 +259,9 @@ if args.unwatch:
     user = gh_user()
     for r in gh_org().get_repos():
         if r.name.startswith(f"{reponame}-"):
-            logging.info(f"Removing {user.login} from subscriber list of {r.name}")
+            logging.info(
+                f"Removing {user.login} from subscriber list of {r.name}"
+            )
             user.remove_from_subscriptions(r)
 
 if args.create_branches:
@@ -278,7 +285,7 @@ if args.create_branches:
                     repo.create_head(f"{identifier}-{branch}",
                                      ref.commit.hexsha)
                 except:
-                    logging.info(f"Branch exists. Updating")
+                    logging.info("Branch exists. Updating")
                     repo.heads[f"{identifier}-{branch}"].set_commit(ref.commit)
 
 if args.impose_deadline:
@@ -424,13 +431,15 @@ if args.create_report:
 
 if args.save_feedback:
     if not os.path.exists("feedback"):
-        logging.info("Creating 'feedback' directory as it does not already exist")
+        logging.info(
+            "Creating 'feedback' directory as it does not already exist"
+        )
         os.mkdir("feedback")
 
-    browser = launch_browser()
-    login_to_github(browser)
-
     marking_repo = gh_org().get_repo(config("github", "marking-repo"))
+    browser = launch_browser()
+    login_to_github(browser, marking_repo)
+
     for pr in marking_repo.get_pulls():
         save_pull_request_as_pdf(browser, marking_repo, pr)
 
