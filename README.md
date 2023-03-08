@@ -184,6 +184,30 @@ classroom-tool --unwatch
 This unsubscribes the logged-in user from all repositories in the configured
 classroom that match the configured basename.
 
+### Saving feedback on pull requests
+
+Passing `--save-feedback` will save a PDF of the "Files changed" tab for each
+student in the marking repository. Files will be stored in a `feedback/`
+subdirectory with the name of each file being `<PR title>.pdf`.
+
+Taking these screenshots requires the use of a browser to render the pages and
+so [`selenium`](https://www.selenium.dev/) is used to automate the process of:
+navigating to the correct web page, waiting for it to load and printing to a PDF.
+At present only Google Chrome/Chromium (via
+[`chromedriver`](https://chromedriver.chromium.org/home)) is supported.
+
+Each time `--save-feedback` is passed a fresh browser instance is created
+without existing cookies. In order for the browser to be able to access the
+pull requests it needs to first be logged in to GitHub. To make this work the
+browser will initially load the GitHub login page where the `classroom-tool`
+user can log in to their GitHub account. Once this is done, hitting Enter in the
+terminal will trigger `classroom-tool` to begin saving the PDFs.
+
+Note that the "Files changed" tab on GitHub automatically collapses the diffs
+from files if the diffs are too large. This means that any comments on the code
+are not visible. To avoid this assignments should therefore encourage students
+to not put all of their code into a single large file.
+
 ## Anonymising the repository
 
 Remapping the repository names to university identity numbers is not enough to

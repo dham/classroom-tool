@@ -1,14 +1,18 @@
 #!/usr/bin/env python
 import os
+import sys
 import github  # Install pygithub
 import git     # Install gitpython
 from argparse import ArgumentParser
 import datetime
+import base64
+import json
 from configparser import ConfigParser
 import logging
 import pandas as pd
 from functools import cache
 import time
+from selenium import webdriver
 
 
 class ClassroomToolError(Exception):
@@ -46,6 +50,8 @@ parser.add_argument("--pull-requests", action="store_true",
                     help="Create marking pull requests.")
 parser.add_argument("--unwatch", action="store_true",
                     help="Unwatch all repositories that match the basename")
+parser.add_argument("--save-feedback", action="store_true",
+                    help="Save PDFs of the feedback left on the pull requests.")
 
 args = parser.parse_args()
 
@@ -145,6 +151,74 @@ def extra_time(roster):
     else:
         logging.info("No extra time column found, assuming no extra time.")
         return [datetime.timedelta(minutes=0) for r in roster.index]
+
+
+def launch_browser():
+    return webdriver.Chrome("chromedriver")
+
+
+def login_to_github(browser):
+    """Launch the GitHub login page and wait until the user has logged in.
+
+    Parameters
+    ----------
+    browser : selenium.webdriver.chrome.webdriver.WebDriver
+        The Chrome/Chromium instance.
+    """
+    logging.info("Loading GitHub login page")
+    browser.get('https://github.com/login')
+    input("Once you have logged in please press Enter to continue:")
+
+
+def save_pull_request_as_pdf(browser, repo, pr):
+    """Open the 'Files changed' tab of a pull request and save the page as a PDF.
+
+    Parameters
+    ----------
+    browser : selenium.webdriver.chrome.webdriver.WebDriver
+        The Chrome/Chromium instance.
+    repo : github.Repository.Repository
+        The marking repository where the feedback is stored.
+    pr : github.PullRequest.PullRequest
+        The pull request to save.
+    """
+    filename = f"feedback/{pr.title}.pdf"
+    if os.path.exists(filename):
+        logging.info(f"{filename} already exists, skipping")
+        return
+
+    logging.info(f"Saving pull request #{pr.number} to {filename}")
+    url = f"https://github.com/{repo.full_name}/pull/{pr.number}/files"
+    browser.get(url)
+    time.sleep(5)  # wait for the page to fully load
+    save_current_page_as_pdf(browser, filename)
+
+
+def save_current_page_as_pdf(browser, filename):
+    """Save the currently opened page as a PDF (in A2 format).
+
+    Parameters
+    ----------
+    browser : selenium.webdriver.chrome.webdriver.WebDriver
+        The Chrome/Chromium instance.
+    filename : str
+        The name of the PDF file to write to.
+    """
+    url = (browser.command_executor._url
+           + f"/session/{browser.session_id}/chromium/send_command_and_get_result")
+    params = {
+        "landscape": False,
+        "displayHeaderFooter": False,
+        "printBackground": True,
+        # A2 size
+        "paperWidth": 16.5,
+        "paperHeight": 23.4,
+    }
+    body = json.dumps({"cmd": "Page.printToPDF", "params": params})
+    response = browser.command_executor._request("POST", url, body)
+
+    with open(filename, "wb") as f:
+        f.write(base64.b64decode(response["value"]["data"]))
 
 
 if args.fetch:
@@ -336,3 +410,17 @@ if args.create_report:
     else:
         raise ClassroomToolError(
             "No repositories to report. Did you forget to --create-branches.")
+
+if args.save_feedback:
+    if not os.path.exists("feedback"):
+        logging.info("Creating 'feedback' directory as it does not already exist")
+        os.mkdir("feedback")
+
+    browser = launch_browser()
+    login_to_github(browser)
+
+    marking_repo = gh_org().get_repo(config("github", "marking-repo"))
+    for pr in marking_repo.get_pulls():
+        save_pull_request_as_pdf(browser, marking_repo, pr)
+
+    browser.quit()
