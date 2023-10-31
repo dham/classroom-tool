@@ -166,7 +166,7 @@ def extra_time(roster):
 
 
 def launch_browser():
-    return webdriver.Chrome("chromedriver")
+    return webdriver.Chrome()
 
 
 def login_to_github(browser, repo):
