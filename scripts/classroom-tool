@@ -238,20 +238,17 @@ def save_current_page_as_pdf(browser, filename):
 if args.fetch:
     count = 0
 
-    reponame = config("github", "basename")
-    name_offset = len(reponame) + 1
+    roster = roster_frame()
+    org = gh_org()
 
-    for r in gh_org().get_repos():
-        if (
-            r.name.startswith(reponame)
-            and not r.name.startswith('exam-practice')
-        ):
+    for github_id, url in zip(roster["github_username"],
+                              roster["student_repository_url"]):
 
-            count += 1
-            uname = "std_" + r.name[name_offset:]
-            remote = get_remote(uname, r.ssh_url)
-            logging.info("Fetching")
-            remote.fetch()
+        count += 1
+        uname = "std_" + github_id
+        remote = get_remote(uname, url)
+        logging.info("Fetching")
+        remote.fetch()
     logging.info(f"{count} repos found.")
 
 if args.unwatch:
