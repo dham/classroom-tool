@@ -1,6 +1,36 @@
 #! /usr/bin/env python
 from argparse import ArgumentParser
 import zipfile
+from configparser import ConfigParser
+import logging
+import os
+from contextlib import contextmanager
+from pathlib import Path
+import git     # Install gitpython
+
+
+class RepoFound(Exception):
+    pass
+
+
+@contextmanager
+def cwd(path: Path):
+    """Sets the cwd within the context
+
+    Args:
+        path (Path): The path to the cwd
+
+    Yields:
+        None
+    """
+
+    origin = Path().absolute()
+    try:
+        os.chdir(path)
+        yield
+    finally:
+        os.chdir(origin)
+
 
 parser = ArgumentParser(
     description="""Helper script to convert wiseflow .""")
@@ -10,8 +40,13 @@ parser.add_argument("--config-file", type=str, action="store",
 parser.add_argument("--log-level", type=str, action="store",
                     default="INFO",
                     help="Level of logging (defaults to INFO).")
-parser.add_argument("--downloads-folder", type="str", action="store",
+parser.add_argument("--downloads-folder", type=str, action="store",
                     help="Folder containing downloaded wiseflow.")
+parser.add_argument("--unzip", action="store_true",
+                    help="Unzip submissions.")
+parser.add_argument("--check-git", action="store_true",
+                    help="Check for a non-empty git submission in each folder."
+                    )
 args = parser.parse_args()
 
 log_level = getattr(logging, args.log_level.upper(), None)
@@ -26,3 +61,67 @@ if not configparser.sections():
     configparser = None
     #raise ConfigError(f"Missing or empty config file: {args.config_file}")
 
+if args.unzip:
+    for submission in os.listdir(args.downloads_folder):
+        if not submission.endswith(".zip"):
+            logging.warning(f"Not unzipping {submission}.")
+        cid = submission.split("_")[0]
+        try:
+            int(cid)
+        except ValueError:
+            raise ValueError(f"Invalid CID {cid}")
+
+        logging.info(f"Extracting {submission}")        
+        z = zipfile.ZipFile(os.path.join(args.downloads_folder, submission))
+        z.extractall(cid)
+
+if args.check_git:
+    for submission in os.listdir("."):
+        try:
+            int(submission)
+        except ValueError:
+            continue  # Skip non CID folders.
+
+        def verify_git(dir):
+            with cwd(dir):
+                try:
+                    repo = git.Repo(".")
+                except git.InvalidGitRepositoryError:
+                    for contents in os.listdir("."):
+                        try:
+                            verify_git(contents)
+                        except NotADirectoryError:
+                            pass
+                else:
+                    if not repo.is_dirty():
+                        logging.warning(
+                            f"{submission}, repository has no changes."
+                        )
+                    elif not any (diff.a_path.endswith("uno.py")
+                                for diff in (repo.index.diff(None)
+                                             + repo.index.diff("HEAD"))):
+                        logging.warning(
+                            f"{submission}, uno.py not modified."
+                        )
+                    head = repo.create_head(f"{submission}-mark")
+                    head.checkout()
+                    repo.index.add("cards/*.py")
+                    repo.index.commit("Exam submission")
+                    feedback = repo.create_head(
+                        f"{submission}-feedback",
+                        "9adaf79d27754498483a4dd9d385005c719813be"
+                    )
+                    try:
+                        remote = repo.remotes["marking"]
+                    except IndexError:
+                        remote = repo.create_remote("marking", "git@github.com:Imperial-MATH50009/midterm-marking-nov-2024.git")
+                    remote.push(f"{submission}-mark").raise_if_error()
+                    remote.push(f"{submission}-feedback").raise_if_error()
+                    raise RepoFound
+
+        try:
+            verify_git(submission)
+        except RepoFound:
+            pass
+        else:
+            logging.warning(f"{submission}, no repository found.")

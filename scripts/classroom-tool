@@ -216,10 +216,13 @@ def save_current_page_as_pdf(browser, filename):
     filename : str
         The name of the PDF file to write to.
     """
-    url = (
-        browser.command_executor._url
-        + f"/session/{browser.session_id}/chromium/send_command_and_get_result"
-    )
+    try:
+        url = browser.command_executor._url
+    except AttributeError:
+        url = browser.command_executor._client_config.remote_server_addr
+    url += \
+        f"/session/{browser.session_id}/chromium/send_command_and_get_result"
+    
     params = {
         "landscape": False,
         "displayHeaderFooter": False,
