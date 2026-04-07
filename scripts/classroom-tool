@@ -87,7 +87,7 @@ if "GITHUB_PAT" not in os.environ:
 
 @cache
 def gh_org():
-    gh = github.Github(os.environ["GITHUB_PAT"])
+    gh = github.Github(auth=github.Auth.Token(os.environ["GITHUB_PAT"]))
     orgname = config("github", "organization")
     logging.info(f"Connecting to GitHub Organization {orgname}")
     return gh.get_organization(orgname)
@@ -95,7 +95,7 @@ def gh_org():
 
 @cache
 def gh_user():
-    gh = github.Github(os.environ["GITHUB_PAT"])
+    gh = github.Github(auth=github.Auth.Token(os.environ["GITHUB_PAT"]))
     return gh.get_user()
 
 
@@ -243,7 +243,6 @@ if args.fetch:
 
     for github_id, url in zip(roster["github_username"],
                               roster["student_repository_url"]):
-
         count += 1
         uname = "std_" + github_id
         remote = get_remote(uname, url)
