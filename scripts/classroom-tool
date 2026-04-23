@@ -49,6 +49,8 @@ parser.add_argument("--pull-requests", action="store_true",
                     help="Create marking pull requests.")
 parser.add_argument("--unwatch", action="store_true",
                     help="Unwatch all repositories that match the basename")
+parser.add_argument("--invite-users", action="store_true",
+                    help="Invite students to join the GitHub organization.")
 parser.add_argument(
     "--save-feedback", action="store_true",
     help="Save PDFs of the feedback left on the pull requests."
@@ -440,3 +442,13 @@ if args.save_feedback:
         save_pull_request_as_pdf(browser, marking_repo, pr)
 
     browser.quit()
+
+if args.invite_users:
+    org = gh_org()
+    rosterfile = roster_frame()
+    gh = github.Github(auth=github.Auth.Token(os.environ["GITHUB_PAT"]))
+
+
+    for github_user in rosterfile["github_username"]:
+        user = gh.get_user(github_user)
+        org.add_to_members(user)
