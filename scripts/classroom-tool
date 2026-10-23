@@ -8,6 +8,7 @@ import base64
 import json
 from configparser import ConfigParser
 import logging
+import math
 import pandas as pd
 from functools import cache
 import time
@@ -132,7 +133,8 @@ def roster_frame():
     )
     return pd.read_csv(roster_file_name,
                        dtype={"identifier": str,
-                              "github_username": str})
+                              "usernames": str,
+                              "commit": str})
 
 
 def roster_map():
@@ -147,7 +149,10 @@ def roster_map():
     except ConfigError:
         return IdentityMap()
 
-    return {gh: i for gh, i in zip(rosterfile["github_username"],
+    if "identifier" not in rosterfile:
+        return IdentityMap()
+
+    return {gh: i for gh, i in zip(rosterfile["usernames"],
                                    rosterfile["identifier"])
             if gh}
 
@@ -245,8 +250,11 @@ if args.fetch:
     roster = roster_frame()
     org = gh_org()
 
-    for github_id, url in zip(roster["github_username"],
-                              roster["student_repository_url"]):
+    for github_id, url in zip(roster["usernames"],
+                              roster["commit"]):
+        if isinstance(url, float) and math.isnan(url):
+            continue
+        url = os.path.dirname(os.path.dirname(url))
         count += 1
         uname = "std_" + github_id
         remote = get_remote(uname, url)
@@ -444,13 +452,3 @@ if args.save_feedback:
         save_pull_request_as_pdf(browser, marking_repo, pr)
 
     browser.quit()
-
-if args.invite_users:
-    org = gh_org()
-    rosterfile = roster_frame()
-    gh = github.Github(auth=github.Auth.Token(os.environ["GITHUB_PAT"]))
-
-
-    for github_user in rosterfile["github_username"]:
-        user = gh.get_user(github_user)
-        org.add_to_members(user)
