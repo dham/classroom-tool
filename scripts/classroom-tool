@@ -8,6 +8,7 @@ import base64
 import json
 from configparser import ConfigParser
 import logging
+import math
 import pandas as pd
 from functools import cache
 import time
@@ -49,6 +50,8 @@ parser.add_argument("--pull-requests", action="store_true",
                     help="Create marking pull requests.")
 parser.add_argument("--unwatch", action="store_true",
                     help="Unwatch all repositories that match the basename")
+parser.add_argument("--invite-users", action="store_true",
+                    help="Invite students to join the GitHub organization.")
 parser.add_argument(
     "--save-feedback", action="store_true",
     help="Save PDFs of the feedback left on the pull requests."
@@ -87,7 +90,7 @@ if "GITHUB_PAT" not in os.environ:
 
 @cache
 def gh_org():
-    gh = github.Github(os.environ["GITHUB_PAT"])
+    gh = github.Github(auth=github.Auth.Token(os.environ["GITHUB_PAT"]))
     orgname = config("github", "organization")
     logging.info(f"Connecting to GitHub Organization {orgname}")
     return gh.get_organization(orgname)
@@ -95,7 +98,7 @@ def gh_org():
 
 @cache
 def gh_user():
-    gh = github.Github(os.environ["GITHUB_PAT"])
+    gh = github.Github(auth=github.Auth.Token(os.environ["GITHUB_PAT"]))
     return gh.get_user()
 
 
@@ -130,7 +133,8 @@ def roster_frame():
     )
     return pd.read_csv(roster_file_name,
                        dtype={"identifier": str,
-                              "github_username": str})
+                              "usernames": str,
+                              "commit": str})
 
 
 def roster_map():
@@ -145,7 +149,10 @@ def roster_map():
     except ConfigError:
         return IdentityMap()
 
-    return {gh: i for gh, i in zip(rosterfile["github_username"],
+    if "identifier" not in rosterfile:
+        return IdentityMap()
+
+    return {gh: i for gh, i in zip(rosterfile["usernames"],
                                    rosterfile["identifier"])
             if gh}
 
@@ -243,9 +250,11 @@ if args.fetch:
     roster = roster_frame()
     org = gh_org()
 
-    for github_id, url in zip(roster["github_username"],
-                              roster["student_repository_url"]):
-
+    for github_id, url in zip(roster["usernames"],
+                              roster["commit"]):
+        if isinstance(url, float) and math.isnan(url):
+            continue
+        url = os.path.dirname(os.path.dirname(url))
         count += 1
         uname = "std_" + github_id
         remote = get_remote(uname, url)

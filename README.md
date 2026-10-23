@@ -1,16 +1,15 @@
 # Classroom-tool
 
 This package provides a script, `classroom-tool` which is designed to work with
-[GitHub Classroom](https://classroom.github.com) to automate some of the tasks
+[Classroom50](https://classroom50.org) to automate some of the tasks
 an instructor might have in marking work submitted on that platform.
 
-The assumed workflow is that students undertake a GitHub classroom assignment,
-which they push to GitHub by a given date and time. The instructor(s) mark the
-work on a separate, private, GitHub repository. This repository contains one
-pull request per student, which enables the instructor(s) to mark the work by
+The assumed workflow is that students undertake a Classroom50 assignment, which
+they push to GitHub by a given date and time. The instructor(s) mark the work
+on a separate, private, GitHub repository. This repository contains one pull
+request per student, which enables the instructor(s) to mark the work by
 commenting on the pull request. The instructors' comments are returned to the
 students by creating PDFs of the annotated pull requests.
-
 
 ## Installation
 
@@ -31,8 +30,8 @@ so that `classroom-tool` can access it.
 
 ## Setting up the GitHub assignment
 
-When configuring the assignment on GitHub Classroom, ensure that you select
-`Enable feedack pull requests`. `classroom-tool` will need these as the base
+When configuring the assignment on Classroom50, ensure that you select
+`Feedack pull request`. `classroom-tool` will need these as the base
 for the marking pull requests in the marking repository.
 
 ## Configuration file
@@ -60,15 +59,18 @@ deadline = 2021-05-26T12:00:00+01:00
 This section contains information about the students taking the exercise.
 
 `roster` is a `.csv` (comma-separated values) file with at least the following
-columns. These are present in the roster you can download from GitHub classroom:
+columns. These are based on the scores sheet you can download from Classroom50:
+
+`usernames`: The GitHub username of the student.
+
+`commit`: The URL of the git commit to be marked.
+
+Any other columns will be preserved in output. The following optional columns
+have special meaning:
 
 `identifier`: The identifier of the student at your institution, such as a
-student number or username.
-
-`github_username`: The GitHub username of the student.
-
-Any other columns will be preserved in output. The following optional column
-has special meaning:
+student number or username. This will be used in place of the GitHub username
+in the marking repostory.
 
 `extra_time`: The additional time allowed to a student in minutes (for example
 as a result of a disability). This can be blank for students with no additional
@@ -104,7 +106,7 @@ last commit which will be accepted.
 ## classroom-tool usage
 
 `classroom-tool` assumes a sequential processing of the submissions, with
-potential manual intervention at each stage to cater for anomolous inputs or
+potential manual intervention at each stage to cater for anomalous inputs or
 circumstances.
 
 The basic usage is:
